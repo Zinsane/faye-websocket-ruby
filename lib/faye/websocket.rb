@@ -33,7 +33,17 @@ module Faye
     end
 
     def self.ensure_reactor_running
-      Thread.new { EventMachine.run } unless EventMachine.reactor_running?
+      Thread.new {
+        Thread.current.abort_on_exception = true
+        begin
+          EventMachine.run
+        rescue
+          p $!
+          puts $@
+        ensure
+          ActiveRecord::Base.clear_active_connections! if defined? ActiveRecord
+        end
+      } unless EventMachine.reactor_running?
       Thread.pass until EventMachine.reactor_running?
     end
 
